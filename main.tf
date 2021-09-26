@@ -57,9 +57,10 @@ locals {
   if_bgp_peers = flatten([
     for if_key, if_value in local.interfaces : [
       for peer_key, peer_value in if_value.bgp_peers : {
-        interface_key   = if_key
-        bgp_peer_key    = "${if_key}_${peer_key}"
-        bgp_peer_config = peer_value
+        interface_key     = if_key
+        interface_l2_type = if_value.l2_port_type
+        bgp_peer_key      = "${if_key}_${peer_key}"
+        bgp_peer_config   = peer_value
       }
     ]
     if if_value.bgp_peers != null
@@ -179,10 +180,10 @@ resource "aci_logical_interface_profile" "l3ip" {
   name                    = "${each.key}_intProfile"
 }
 
-resource "aci_l3out_path_attachment" "access" {
+resource "aci_l3out_path_attachment" "path" {
   for_each = {
     for if_key, if_value in local.interfaces : if_key => if_value
-    if if_value.l2_port_type == "port"
+    if if_value.l2_port_type != "vpc"
   }
 
   logical_interface_profile_dn = aci_logical_interface_profile.l3ip[each.key].id
@@ -195,23 +196,7 @@ resource "aci_l3out_path_attachment" "access" {
   mode                         = each.value.mode
 }
 
-resource "aci_l3out_path_attachment" "pc" {
-  for_each = {
-    for if_key, if_value in local.interfaces : if_key => if_value
-    if if_value.l2_port_type == "pc"
-  }
-
-  logical_interface_profile_dn = aci_logical_interface_profile.l3ip[each.key].id
-  target_dn                    = "topology/pod-${each.value.pod_id}/paths-${each.value.node_a_id}/pathep-[${each.value.interface_id}]"
-  if_inst_t                    = each.value.l3_port_type
-  addr                         = each.value.ip_addr_a
-  mtu                          = each.value.mtu
-  encap                        = each.value.vlan_encap
-  encap_scope                  = each.value.vlan_encap_scope
-  mode                         = each.value.mode
-}
-
-resource "aci_l3out_path_attachment" "vpc" {
+resource "aci_l3out_path_attachment" "protpath" {
   for_each = {
     for if_key, if_value in local.interfaces : if_key => if_value
     if if_value.l2_port_type == "vpc"
@@ -234,7 +219,7 @@ resource "aci_l3out_vpc_member" "vpc_member_a" {
     if if_value.l2_port_type == "vpc"
   }
 
-  leaf_port_dn = aci_l3out_path_attachment.vpc[each.key].id
+  leaf_port_dn = aci_l3out_path_attachment.protpath[each.key].id
   side         = "A"
   addr         = each.value.ip_addr_a
 }
@@ -245,7 +230,7 @@ resource "aci_l3out_vpc_member" "vpc_member_b" {
     if if_value.l2_port_type == "vpc"
   }
 
-  leaf_port_dn = aci_l3out_path_attachment.vpc[each.key].id
+  leaf_port_dn = aci_l3out_path_attachment.protpath[each.key].id
   side         = "B"
   addr         = each.value.ip_addr_b
 }
@@ -256,7 +241,7 @@ resource "aci_l3out_path_attachment_secondary_ip" "vpc_secondary_addr" {
     if if_value.l2_port_type == "vpc" && if_value.ip_addr_shared != null
   }
 
-  l3out_path_attachment_dn = aci_l3out_path_attachment.vpc[each.key].id
+  l3out_path_attachment_dn = aci_l3out_path_attachment.protpath[each.key].id
   addr                     = each.value.ip_addr_shared
 }
 
@@ -281,7 +266,8 @@ resource "aci_bgp_peer_connectivity_profile" "if_bgp_peer" {
   }
 
   # Here we are using the BGP Peer under node profile for configuring it under logical interface. Class and atttributes are the same so hopping it works well
-  logical_node_profile_dn = aci_l3out_path_attachment.vpc[each.value.interface_key].id
+  logical_node_profile_dn = (each.value.interface_l2_type == "vpc" ?
+  aci_l3out_path_attachment.protpath[each.value.interface_key].id : aci_l3out_path_attachment.path[each.value.interface_key].id)
 
   addr                = each.value.bgp_peer_config.peer_ip_addr
   as_number           = each.value.bgp_peer_config.peer_asn
