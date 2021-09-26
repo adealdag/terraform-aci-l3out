@@ -31,7 +31,6 @@ locals {
       bgp_ctrl              = ""
       peer_ctrl             = ""
       allowed_self_as_count = "3"
-      local_asn_propagate   = "none"
       private_as_ctrl       = ""
       ttl                   = "1"
     }
