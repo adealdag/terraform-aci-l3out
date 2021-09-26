@@ -13,7 +13,7 @@ locals {
   nodes = defaults(var.nodes, {
     pod_id             = "1"
     router_id_loopback = "yes"
-    static_routes      = {
+    static_routes = {
       preference = "1"
       bfd        = false
     }
@@ -40,7 +40,7 @@ locals {
   external_l3epg = defaults(var.external_l3epg, {
     pref_gr_memb = "exclude"
     subnets = {
-      scope     = "import-security"
+      scope = "import-security"
     }
   })
 
