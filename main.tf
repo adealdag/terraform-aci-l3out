@@ -277,7 +277,7 @@ resource "aci_l3out_ospf_interface_profile" "ifProf" {
 # BGP Peers under Interface
 resource "aci_bgp_peer_connectivity_profile" "if_bgp_peer" {
   for_each = {
-    for peer in local.if_bgp_peers : peer.peer_key => peer
+    for peer in local.if_bgp_peers : peer.bgp_peer_key => peer
   }
 
   # Here we are using the BGP Peer under node profile for configuring it under logical interface. Class and atttributes are the same so hopping it works well
