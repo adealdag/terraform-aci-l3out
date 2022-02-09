@@ -7,7 +7,15 @@ locals {
   })
 
   bgp = defaults(var.bgp, {
-    bgp_peers = {}
+    bgp_peers = {
+      weight                = "0"
+      addr_family_ctrl      = "af-ucast"
+      bgp_ctrl              = ""
+      peer_ctrl             = ""
+      allowed_self_as_count = "3"
+      private_as_ctrl       = ""
+      ttl                   = "1"
+    }
   })
 
   nodes = defaults(var.nodes, {
