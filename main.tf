@@ -4,12 +4,11 @@ terraform {
   required_providers {
     aci = {
       source  = "CiscoDevNet/aci"
-      version = "~> 0.7.0"
+      version = ">= 2.0.0"
     }
   }
 
-  required_version = "~> 1.0.5"
-
+  required_version = "> 0.14"
 }
 
 locals {
@@ -95,7 +94,8 @@ resource "aci_l3out_ospf_external_policy" "ospf" {
   area_id       = local.ospf.area_id
   area_type     = local.ospf.area_type
   area_cost     = local.ospf.area_cost
-  area_ctrl     = local.ospf.area_ctrl
+  # Doing split as defaults() is not working as expected with list of strings
+  area_ctrl = compact(split(",", local.ospf.area_ctrl))
 }
 
 resource "aci_l3out_bgp_external_policy" "bgp" {
@@ -107,18 +107,18 @@ resource "aci_l3out_bgp_external_policy" "bgp" {
 resource "aci_bgp_peer_connectivity_profile" "node_bgp_peer" {
   for_each = local.bgp.bgp_peers
 
-  logical_node_profile_dn = aci_logical_node_profile.l3np.id
+  parent_dn = aci_logical_node_profile.l3np.id
 
   addr                = each.value.peer_ip_addr
   as_number           = each.value.peer_asn
   weight              = each.value.weight
-  addr_t_ctrl         = each.value.addr_family_ctrl
-  ctrl                = each.value.bgp_ctrl
-  peer_ctrl           = each.value.peer_ctrl
+  addr_t_ctrl         = compact(split(",", each.value.addr_family_ctrl))
+  ctrl                = compact(split(",", each.value.bgp_ctrl))
+  peer_ctrl           = compact(split(",", each.value.peer_ctrl))
   allowed_self_as_cnt = each.value.allowed_self_as_count
   local_asn           = each.value.local_asn
   local_asn_propagate = each.value.local_asn_propagate
-  private_a_sctrl     = each.value.private_as_ctrl
+  private_a_sctrl     = compact(split(",", each.value.private_as_ctrl))
   ttl                 = each.value.ttl
 }
 
@@ -266,19 +266,19 @@ resource "aci_bgp_peer_connectivity_profile" "if_bgp_peer" {
   }
 
   # Here we are using the BGP Peer under node profile for configuring it under logical interface. Class and atttributes are the same so hopping it works well
-  logical_node_profile_dn = (each.value.interface_l2_type == "vpc" ?
+  parent_dn = (each.value.interface_l2_type == "vpc" ?
   aci_l3out_path_attachment.protpath[each.value.interface_key].id : aci_l3out_path_attachment.path[each.value.interface_key].id)
 
   addr                = each.value.bgp_peer_config.peer_ip_addr
   as_number           = each.value.bgp_peer_config.peer_asn
   weight              = each.value.bgp_peer_config.weight
-  addr_t_ctrl         = each.value.bgp_peer_config.addr_family_ctrl
-  ctrl                = each.value.bgp_peer_config.bgp_ctrl
-  peer_ctrl           = each.value.bgp_peer_config.peer_ctrl
+  addr_t_ctrl         = compact(split(",", each.value.bgp_peer_config.addr_family_ctrl))
+  ctrl                = compact(split(",", each.value.bgp_peer_config.bgp_ctrl))
+  peer_ctrl           = compact(split(",", each.value.bgp_peer_config.peer_ctrl))
   allowed_self_as_cnt = each.value.bgp_peer_config.allowed_self_as_count
   local_asn           = each.value.bgp_peer_config.local_asn
   local_asn_propagate = each.value.bgp_peer_config.local_asn_propagate
-  private_a_sctrl     = each.value.bgp_peer_config.private_as_ctrl
+  private_a_sctrl     = compact(split(",", each.value.bgp_peer_config.private_as_ctrl))
   ttl                 = each.value.bgp_peer_config.ttl
 }
 
