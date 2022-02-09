@@ -250,7 +250,7 @@ resource "aci_l3out_path_attachment_secondary_ip" "vpc_secondary_addr" {
 resource "aci_l3out_ospf_interface_profile" "ifProf" {
   for_each = {
     for if_key, if_value in local.interfaces : if_key => if_value
-    if if_value.ospf_interface_policy_dn != null
+    if local.ospf.enabled
   }
 
   logical_interface_profile_dn = aci_logical_interface_profile.l3ip[each.key].id
